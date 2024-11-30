@@ -45,6 +45,7 @@
                     <td>{{ request.name }}</td>
                     <td>{{ request.student_number }}</td>
                     <td>
+                        {% if session.get('student_number') == team_details.liaison_id %}
                         <!-- Approve Form -->
                         <form action="{{ url_for('team.approve_request', team_id=team_details.team_id) }}" method="POST"
                             class="d-inline">
@@ -58,6 +59,7 @@
                             <input type="hidden" name="student_number" value="{{ request.student_number }}">
                             <button type="submit" class="btn btn-danger">Reject</button>
                         </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
