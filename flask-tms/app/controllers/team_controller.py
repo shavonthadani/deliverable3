@@ -29,7 +29,7 @@ def team_details():
 
         # Check if the user is the liaison
         is_liaison = team_details['liaison_id'] == student_number
-        team_parameters = TeamModel.get_team_parameters()
+        team_parameters = TeamModel.get_team_parameters(team_id)
         return render_template('team_details.html', team_details=team_details, is_liaison=is_liaison, team_parameters=team_parameters)
     except Exception as e:
         flash(f"Error fetching team details: {e}", "danger")
@@ -54,7 +54,7 @@ def quit_team():
 
     try:
         # Get the team parameters
-        team_parameters = TeamModel.get_team_parameters()
+        team_parameters = TeamModel.get_team_parameters(team_id)
         deadline = datetime.strptime(team_parameters['formation_deadline'], "%Y-%m-%d")
 
         # Check if the deadline has passed
@@ -71,7 +71,7 @@ def quit_team():
         TeamModel.remove_member(team_id, student_number)
 
         # Clear user's team_id in the session and Firestore
-        team_parameters = TeamModel.get_team_parameters()
+        team_parameters = TeamModel.get_team_parameters(team_id)
         min_members = team_parameters.get('min_members', 0)
         max_members = team_parameters.get('max_members', 0)
         session.pop('team_id', None)
@@ -263,7 +263,7 @@ def approve_request(team_id):
             return redirect(url_for('auth.dashboard_page'))
 
         TeamModel.approve_request(team_id, student_number)
-        team_parameters = TeamModel.get_team_parameters()
+        team_parameters = TeamModel.get_team_parameters(team_id)
         min_members = team_parameters.get('min_members', 0)
         max_members = team_parameters.get('max_members', 0)
         TeamModel.re_evaluate_teams(min_members, max_members)
@@ -309,7 +309,8 @@ def view_all_teams():
 
     try:
         teams = TeamModel.get_all_teams()
-        return render_template('view_all_teams.html', teams=teams)
+        students_without_teams = TeamModel.get_students_without_teams()  # Fetch students not in teams
+        return render_template('view_all_teams.html', teams=teams,students_without_teams=students_without_teams)
     except Exception as e:
         flash(f"Error fetching teams: {e}", "danger")
         return redirect(url_for('auth.dashboard_page'))
@@ -324,14 +325,20 @@ def add_member_to_team(team_id):
         return redirect(url_for('auth.dashboard_page'))
 
     student_id = request.form.get('student_id')
+    team_parameters = TeamModel.get_team_parameters(team_id)
+    deadline = datetime.strptime(team_parameters['formation_deadline'], "%Y-%m-%d")
 
+    # Check if the deadline has passed
+    if datetime.now() > deadline:
+        flash("You cannot add member after deadline.", "danger")
+        return redirect(url_for('auth.dashboard_page'))
     try:
         # Check if student is already in a team
         if TeamModel.is_user_in_team(student_id):
             flash(f"Student {student_id} is already in a team.", "danger")
         else:
             TeamModel.add_member(team_id, student_id)
-            team_parameters = TeamModel.get_team_parameters()
+            team_parameters = TeamModel.get_team_parameters(team_id)
             min_members = team_parameters.get('min_members', 0)
             max_members = team_parameters.get('max_members', 0)
             TeamModel.re_evaluate_teams(min_members, max_members)
@@ -339,7 +346,7 @@ def add_member_to_team(team_id):
     except Exception as e:
         flash(f"Error adding student to the team: {e}", "danger")
 
-    return redirect(url_for('team.view_all_teams'))
+    return redirect(url_for('auth.dashboard_page'))
 
 @team_bp.route('/instructor/remove_member/<team_id>', methods=['POST'])
 def remove_member_from_team(team_id):
@@ -348,6 +355,13 @@ def remove_member_from_team(team_id):
     """
     if 'role' not in session or session['role'] != 'instructor':
         flash("Access denied. Only instructors can remove members from teams.", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+    team_parameters = TeamModel.get_team_parameters(team_id)
+    deadline = datetime.strptime(team_parameters['formation_deadline'], "%Y-%m-%d")
+
+    # Check if the deadline has passed
+    if datetime.now() > deadline:
+        flash("You cannot remove member after deadline.", "danger")
         return redirect(url_for('auth.dashboard_page'))
 
     student_id = request.form.get('student_id')
@@ -358,7 +372,7 @@ def remove_member_from_team(team_id):
 
     try:
         TeamModel.remove_member(team_id, student_id)
-        team_parameters = TeamModel.get_team_parameters()
+        team_parameters = TeamModel.get_team_parameters(team_id)
         min_members = team_parameters.get('min_members', 0)
         max_members = team_parameters.get('max_members', 0)
         TeamModel.re_evaluate_teams(min_members, max_members)
@@ -400,9 +414,9 @@ def customize_team_parameters(team_id):
         db.collection('team_parameters').document(team_id).set({
             'min_members': min_members,
             'max_members': max_members,
-            'deadline': deadline
+            'formation_deadline': deadline
         })
-        team_parameters = TeamModel.get_team_parameters()
+        team_parameters = TeamModel.get_team_parameters(team_id)
         min_members = team_parameters.get('min_members', 0)
         max_members = team_parameters.get('max_members', 0)
         TeamModel.re_evaluate_teams(min_members, max_members)
@@ -415,4 +429,18 @@ def customize_team_parameters(team_id):
         return redirect(url_for('auth.dashboard_page'))
     except Exception as e:
         flash(f"Error saving custom parameters: {e}", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+
+@team_bp.route('/list_teams', methods=['GET'])
+def list_teams():
+    """
+    Display a list of all teams with actions for instructors.
+    """
+    try:
+        teams = TeamModel.get_all_teams()  # Fetch all teams
+        students_without_teams = TeamModel.get_students_without_teams()  # Fetch students not in teams
+
+        return render_template('list_teams.html', teams=teams, students_without_teams=students_without_teams)
+    except Exception as e:
+        flash(f"Error fetching teams: {e}", "danger")
         return redirect(url_for('auth.dashboard_page'))

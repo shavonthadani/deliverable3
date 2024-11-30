@@ -146,11 +146,17 @@ class TeamModel:
             'status': 'incomplete' if len(members) < TeamModel.get_min_team_size() else 'complete'
         })
     @staticmethod
-    def get_team_parameters():
+    def get_team_parameters(team_id = None):
         """
         Retrieve the team parameters from Firestore.
         """
         db = TeamModel.get_firestore_client()
+        if team_id:
+            # Check for team-specific parameters
+            team_params_ref = db.collection('team_parameters').document(team_id)
+            team_params = team_params_ref.get()
+            if team_params.exists:
+                return team_params.to_dict()
         params_ref = db.collection('team_parameters').document('default')
         params = params_ref.get()
         if params.exists:
@@ -291,10 +297,6 @@ class TeamModel:
             'pending_requests': pending_requests,
             'members': members
         })
-
-        # Update student's team_id in their document
-        db.collection('students').document(student_id).update({'team_id': team_id})
-
     @staticmethod
     def reject_request(team_id, student_number):
         """
@@ -370,18 +372,42 @@ class TeamModel:
             raise Exception("Team already at maximum capacity.")
 
         team_ref.update({'members': firestore.ArrayUnion([student_id])})
-        TeamModel.re_evaluate_team_status(team_id)
+        team_parameters = TeamModel.get_team_parameters(team_id)
+        min_members = team_parameters.get('min_members', 0)
+        max_members = team_parameters.get('max_members', 0)
+        TeamModel.re_evaluate_teams(min_members, max_members)
 
     @staticmethod
-    def set_custom_team_parameters(team_id, min_members, max_members, deadline):
+    def get_students_without_teams():
         """
-        Set custom parameters for a specific team.
+        Retrieve a list of students who are not currently part of any team.
         """
         db = TeamModel.get_firestore_client()
-        team_ref = db.collection('teams').document(team_id)
+        students_ref = db.collection('students')
+        teams_ref = db.collection('teams')
 
-        team_ref.update({
-            'custom_min_members': int(min_members),
-            'custom_max_members': int(max_members),
-            'custom_deadline': deadline,
-        })
+        # Fetch all students
+        all_students = students_ref.stream()
+
+        # Fetch all teams and their members
+        teams = teams_ref.stream()
+        all_team_members = set()
+        for team in teams:
+            team_data = team.to_dict()
+            all_team_members.update(team_data.get('members', []))
+
+        students_without_teams = []
+        for student in all_students:
+            student_data = student.to_dict()
+
+            # Include only students with the "student" role who are not in any team
+            if student_data.get('role') == 'student' and student.id not in all_team_members:
+                students_without_teams.append({
+                    'student_number': student.id,
+                    'name': f"{student_data.get('first_name')} {student_data.get('last_name')}",
+                    'study_program': student_data.get('study_program'),
+                    'course_section': student_data.get('course_section'),
+                    'email': student_data.get('email')
+                })
+
+        return students_without_teams

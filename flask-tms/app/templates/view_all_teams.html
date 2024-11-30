@@ -52,16 +52,18 @@
                         </td>
                         <td>
                             {% if team.status == 'incomplete' %}
-                            <form action="{{ url_for('team.add_member_to_team', team_id=team.team_id) }}" method="POST"
-                                class="mb-3">
-                                <label for="student_id" class="form-label">Add Member</label>
-                                <select name="student_id" class="form-select mb-2" required>
+                            <form action="{{ url_for('team.add_member_to_team', team_id=team.team_id) }}" method="POST">
+                                <label for="student_id">Add Member:</label>
+                                <select name="student_id" class="form-control mb-2" required>
                                     {% for student in students_without_teams %}
-                                    <option value="{{ student.student_number }}">{{ student.name }}</option>
+                                    <option value="{{ student.student_number }}">
+                                        {{ student.name }} ({{ student.student_number }})
+                                    </option>
                                     {% endfor %}
                                 </select>
-                                <button class="btn btn-primary btn-sm w-100">Add Member</button>
+                                <button class="btn btn-primary btn-sm">Add Member</button>
                             </form>
+
                             {% endif %}
                             <form action="{{ url_for('team.remove_member_from_team', team_id=team.team_id) }}"
                                 method="POST" class="mb-3">

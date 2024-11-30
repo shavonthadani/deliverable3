@@ -68,15 +68,8 @@ def login():
     try:
         # Map the student/employee number to a pseudo-email
         pseudo_email = f"{student_number}@example.com"
-
-        # Use Firebase Admin SDK to find the user by email
         user = auth.get_user_by_email(pseudo_email)
-
-        # Note: Firebase Admin SDK cannot verify passwords directly.
-        # For now, we assume login is successful if the user exists.
-        # You can add a custom password validation layer or Firebase Client SDK for secure login.
-
-        return redirect(url_for('auth.dashboard_page'))  # Redirect to dashboard on successful login
+        return redirect(url_for('auth.dashboard_page'))
     except Exception as e:
         error = "Invalid Student/Employee number or password."
         return render_template('login.html', error=error)
