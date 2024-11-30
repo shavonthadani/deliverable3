@@ -11,7 +11,7 @@ def create_app():
     app = Flask(__name__)
 
     # Set a secret key for flash messages
-    app.secret_key = "your_secret_key"
+    app.secret_key = "jknklnlkjb"
 
     # Initialize Firebase Admin SDK
     if not firebase_admin._apps:

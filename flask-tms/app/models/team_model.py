@@ -1,7 +1,5 @@
 from datetime import datetime
 from firebase_admin import firestore
-from app.models.user_model import UserModel
-
 class TeamModel:
     @staticmethod
     def remove_member(team_id, member_id):

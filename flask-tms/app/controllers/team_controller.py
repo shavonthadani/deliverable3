@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from app.models.user_model import UserModel
 from datetime import datetime
-from firebase_admin import firestore
 from app.models.team_model import TeamModel
+from app.models.notification_model import NotificationModel
 from app.models.team_parameters_model import TeamParametersModel
 team_bp = Blueprint('team', __name__)
 
@@ -69,7 +69,12 @@ def quit_team():
 
         # Remove user from the team
         TeamModel.remove_member(team_id, student_number)
-
+        email = NotificationModel.get_email_by_student_number(student_number)
+        NotificationModel.send_email(
+            subject="You left your team",
+            message=f"This is confirmation that you left {team_details['team_name']}",
+            recipient=email
+        )
         # Clear user's team_id in the session and Firestore
         team_parameters = TeamModel.get_team_parameters(team_id)
         min_members = team_parameters.get('min_members', 0)
@@ -263,6 +268,12 @@ def approve_request(team_id):
             return redirect(url_for('auth.dashboard_page'))
 
         TeamModel.approve_request(team_id, student_number)
+        email = NotificationModel.get_email_by_student_number(student_number)
+        NotificationModel.send_email(
+            subject="You were added to a team",
+            message=f"This is confirmation that you were added to {team['team_name']}",
+            recipient=email
+        )
         team_parameters = TeamModel.get_team_parameters(team_id)
         min_members = team_parameters.get('min_members', 0)
         max_members = team_parameters.get('max_members', 0)
@@ -342,6 +353,13 @@ def add_member_to_team(team_id):
             min_members = team_parameters.get('min_members', 0)
             max_members = team_parameters.get('max_members', 0)
             TeamModel.re_evaluate_teams(min_members, max_members)
+            email = NotificationModel.get_email_by_student_number(student_id)
+            team = TeamModel.get_team_details(team_id)
+            NotificationModel.send_email(
+                subject="You were added to a team",
+                message=f"This is confirmation that you were added to {team['team_name']}",
+                recipient=email
+            )
             flash("Student added to the team successfully!", "success")
     except Exception as e:
         flash(f"Error adding student to the team: {e}", "danger")
@@ -376,6 +394,13 @@ def remove_member_from_team(team_id):
         min_members = team_parameters.get('min_members', 0)
         max_members = team_parameters.get('max_members', 0)
         TeamModel.re_evaluate_teams(min_members, max_members)
+        email = NotificationModel.get_email_by_student_number(student_id)
+        team = TeamModel.get_team_details(team_id)
+        NotificationModel.send_email(
+            subject="You were removed from a team",
+            message=f"This is confirmation that you were removed from {team['team_name']}",
+            recipient=email
+        )
         flash("Student removed from the team successfully!", "success")
     except Exception as e:
         flash(f"Error removing student from the team: {e}", "danger")

@@ -1,7 +1,9 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, session, jsonify
 from app.models.user_model import UserModel
 import requests
+import os
 auth_bp = Blueprint('auth', __name__)
+
 @auth_bp.route('/signup')
 def signup_page():
     return render_template('signup.html')
@@ -72,7 +74,7 @@ def login():
 
     try:
         # Firebase REST API endpoint
-        api_url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyBzU5FOOS3RxAWi1Dr8Pvo6tgCeEJ7QsGU"
+        api_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.getenv("AUTH_KEY")}"
 
         # Generate pseudo-email from student number
         email = f"{student_number}@example.com"
