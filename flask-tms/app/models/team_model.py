@@ -321,3 +321,67 @@ class TeamModel:
             team_ref.update({'pending_requests': pending_requests})
         except Exception as e:
             raise Exception(f"Error rejecting request: {e}")
+
+    @staticmethod
+    def get_all_teams():
+        """
+        Fetch all teams with their details.
+        """
+        db = TeamModel.get_firestore_client()
+        teams_ref = db.collection('teams').stream()
+
+        all_teams = []
+        for team_doc in teams_ref:
+            team_data = team_doc.to_dict()
+
+            # Fetch members' details
+            members_details = []
+            for member_id in team_data.get('members', []):
+                member_ref = db.collection('students').document(member_id).get()
+                if member_ref.exists:
+                    member_info = member_ref.to_dict()
+                    members_details.append({
+                        'student_number': member_id,
+                        'name': f"{member_info.get('first_name')} {member_info.get('last_name')}",
+                        'study_program': member_info.get('study_program'),
+                        'course_section': member_info.get('course_section'),
+                        'email': member_info.get('email'),
+                    })
+
+            team_data['members_details'] = members_details
+            all_teams.append(team_data)
+
+        return all_teams
+
+    @staticmethod
+    def add_member(team_id, student_id):
+        """
+        Add a student to the specified team.
+        """
+        db = TeamModel.get_firestore_client()
+        team_ref = db.collection('teams').document(team_id)
+        team_data = team_ref.get()
+
+        if not team_data.exists:
+            raise Exception("Team not found.")
+
+        team = team_data.to_dict()
+        if len(team.get('members', [])) >= TeamModel.get_max_team_size():
+            raise Exception("Team already at maximum capacity.")
+
+        team_ref.update({'members': firestore.ArrayUnion([student_id])})
+        TeamModel.re_evaluate_team_status(team_id)
+
+    @staticmethod
+    def set_custom_team_parameters(team_id, min_members, max_members, deadline):
+        """
+        Set custom parameters for a specific team.
+        """
+        db = TeamModel.get_firestore_client()
+        team_ref = db.collection('teams').document(team_id)
+
+        team_ref.update({
+            'custom_min_members': int(min_members),
+            'custom_max_members': int(max_members),
+            'custom_deadline': deadline,
+        })

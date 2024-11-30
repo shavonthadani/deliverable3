@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Teams</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">All Teams</h1>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">Team ID</th>
+                        <th scope="col">Team Name</th>
+                        <th scope="col">Date of Creation</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Members</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for team in teams %}
+                    <tr>
+                        <td>{{ team.team_id }}</td>
+                        <td>{{ team.team_name }}</td>
+                        <td>{{ team.date_of_creation }}</td>
+                        <td>
+                            <span
+                                class="badge {% if team.status == 'complete' %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ team.status | capitalize }}
+                            </span>
+                        </td>
+                        <td>
+                            <ul class="list-group">
+                                {% for member in team.members_details %}
+                                <li class="list-group-item">
+                                    <strong>Name:</strong> {{ member.name }}<br>
+                                    <strong>Student Number:</strong> {{ member.student_number }}<br>
+                                    <strong>Study Program:</strong> {{ member.study_program }}<br>
+                                    <strong>Course Section:</strong> {{ member.course_section }}<br>
+                                    <strong>Email:</strong> {{ member.email }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+
+                        </td>
+                        <td>
+                            {% if team.status == 'incomplete' %}
+                            <form action="{{ url_for('team.add_member_to_team', team_id=team.team_id) }}" method="POST"
+                                class="mb-3">
+                                <label for="student_id" class="form-label">Add Member</label>
+                                <select name="student_id" class="form-select mb-2" required>
+                                    {% for student in students_without_teams %}
+                                    <option value="{{ student.student_number }}">{{ student.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-primary btn-sm w-100">Add Member</button>
+                            </form>
+                            {% endif %}
+                            <form action="{{ url_for('team.remove_member_from_team', team_id=team.team_id) }}"
+                                method="POST" class="mb-3">
+                                <label for="student_id" class="form-label">Remove Member</label>
+                                <select name="student_id" class="form-select mb-2" required>
+                                    {% for member in team.members_details %}
+                                    <option value="{{ member.student_number }}">
+                                        {{ member.name }} ({{ member.student_number }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-danger btn-sm w-100">Remove Member</button>
+                            </form>
+                            <form action="{{ url_for('team.customize_team_parameters', team_id=team.team_id) }}"
+                                method="POST">
+                                <label class="form-label">Custom Parameters</label>
+                                <input type="number" name="min_members" placeholder="Min Members"
+                                    class="form-control mb-2" required>
+                                <input type="number" name="max_members" placeholder="Max Members"
+                                    class="form-control mb-2" required>
+                                <input type="date" name="deadline" class="form-control mb-2" required>
+                                <button class="btn btn-secondary btn-sm w-100">Set Parameters</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <a href="{{ url_for('auth.dashboard_page') }}" class="btn btn-secondary mt-3">Back to Dashboard</a>
+
+    </div>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

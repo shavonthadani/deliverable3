@@ -3,6 +3,7 @@ from app.models.user_model import UserModel
 from datetime import datetime
 from firebase_admin import firestore
 from app.models.team_model import TeamModel
+from app.models.team_parameters_model import TeamParametersModel
 team_bp = Blueprint('team', __name__)
 
 @team_bp.route('/details', methods=['GET', 'POST'])
@@ -296,3 +297,122 @@ def reject_request(team_id):
         flash(f"Error rejecting request: {e}", "danger")
 
     return redirect(url_for('auth.dashboard_page'))
+
+@team_bp.route('/instructor/teams', methods=['GET'])
+def view_all_teams():
+    """
+    Display a list of all teams for the instructor's courses.
+    """
+    if 'role' not in session or session['role'] != 'instructor':
+        flash("Access denied. Only instructors can view teams.", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+
+    try:
+        teams = TeamModel.get_all_teams()
+        return render_template('view_all_teams.html', teams=teams)
+    except Exception as e:
+        flash(f"Error fetching teams: {e}", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+
+@team_bp.route('/instructor/add_member/<team_id>', methods=['POST'])
+def add_member_to_team(team_id):
+    """
+    Add a student to a team.
+    """
+    if 'role' not in session or session['role'] != 'instructor':
+        flash("Access denied. Only instructors can add members to teams.", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+
+    student_id = request.form.get('student_id')
+
+    try:
+        # Check if student is already in a team
+        if TeamModel.is_user_in_team(student_id):
+            flash(f"Student {student_id} is already in a team.", "danger")
+        else:
+            TeamModel.add_member(team_id, student_id)
+            team_parameters = TeamModel.get_team_parameters()
+            min_members = team_parameters.get('min_members', 0)
+            max_members = team_parameters.get('max_members', 0)
+            TeamModel.re_evaluate_teams(min_members, max_members)
+            flash("Student added to the team successfully!", "success")
+    except Exception as e:
+        flash(f"Error adding student to the team: {e}", "danger")
+
+    return redirect(url_for('team.view_all_teams'))
+
+@team_bp.route('/instructor/remove_member/<team_id>', methods=['POST'])
+def remove_member_from_team(team_id):
+    """
+    Remove a student from a team.
+    """
+    if 'role' not in session or session['role'] != 'instructor':
+        flash("Access denied. Only instructors can remove members from teams.", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+
+    student_id = request.form.get('student_id')
+    team_details = TeamModel.get_team_details(team_id)
+    if team_details['liaison_id'] == student_id:
+        flash("You cannot remove a liason.", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+
+    try:
+        TeamModel.remove_member(team_id, student_id)
+        team_parameters = TeamModel.get_team_parameters()
+        min_members = team_parameters.get('min_members', 0)
+        max_members = team_parameters.get('max_members', 0)
+        TeamModel.re_evaluate_teams(min_members, max_members)
+        flash("Student removed from the team successfully!", "success")
+    except Exception as e:
+        flash(f"Error removing student from the team: {e}", "danger")
+
+    return redirect(url_for('auth.dashboard_page'))
+
+@team_bp.route('/customize_parameters/<team_id>', methods=['POST'])
+def customize_team_parameters(team_id):
+    """
+    Save custom team parameters for a specific team.
+    """
+    min_members = request.form.get('min_members')
+    max_members = request.form.get('max_members')
+    deadline = request.form.get('deadline')
+
+    # Validation
+    if not all([min_members, max_members, deadline]):
+        flash("All fields are required.", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+
+    try:
+        min_members = int(min_members)
+        max_members = int(max_members)
+        deadline_date = datetime.strptime(deadline, "%Y-%m-%d")
+
+        if min_members <= 0 or max_members <= 1 or min_members >= max_members:
+            flash("Invalid member constraints.", "danger")
+            return redirect(url_for('auth.dashboard_page'))
+
+        if deadline_date <= datetime.now():
+            flash("Deadline must be a future date.", "danger")
+            return redirect(url_for('auth.dashboard_page'))
+
+        # Save custom parameters
+        db = TeamParametersModel.get_firestore_client()
+        db.collection('team_parameters').document(team_id).set({
+            'min_members': min_members,
+            'max_members': max_members,
+            'deadline': deadline
+        })
+        team_parameters = TeamModel.get_team_parameters()
+        min_members = team_parameters.get('min_members', 0)
+        max_members = team_parameters.get('max_members', 0)
+        TeamModel.re_evaluate_teams(min_members, max_members)
+
+        flash("Custom parameters set successfully!", "success")
+        return redirect(url_for('auth.dashboard_page'))
+
+    except ValueError:
+        flash("Invalid input. Ensure numbers are entered for members and a valid date is provided.", "danger")
+        return redirect(url_for('auth.dashboard_page'))
+    except Exception as e:
+        flash(f"Error saving custom parameters: {e}", "danger")
+        return redirect(url_for('auth.dashboard_page'))

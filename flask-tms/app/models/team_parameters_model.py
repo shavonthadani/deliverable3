@@ -22,14 +22,26 @@ class TeamParametersModel:
 
 
     @staticmethod
-    def get_team_parameters():
+    def get_team_parameters(team_id=None):
         """
-        Retrieve the current team creation parameters.
+        Retrieve the team creation parameters.
+        Priority: Custom team parameters > Default parameters.
         """
         db = TeamParametersModel.get_firestore_client()
-        params_ref = db.collection('team_parameters').document('default')
-        params = params_ref.get()
-        if params.exists:
-            return params.to_dict()
-        else:
-            return None
+
+        if team_id:
+            # Check for team-specific parameters
+            team_params_ref = db.collection('team_parameters').document(team_id)
+            team_params = team_params_ref.get()
+            if team_params.exists:
+                return team_params.to_dict()
+
+        # Fallback to default parameters
+        default_params_ref = db.collection('team_parameters').document('default')
+        default_params = default_params_ref.get()
+        if default_params.exists:
+            return default_params.to_dict()
+
+        # If neither custom nor default parameters are found
+        return None
+
