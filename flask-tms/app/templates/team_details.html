@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Details</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1>Team Details</h1>
+
+        <!-- Team Information -->
+        <p><strong>Team ID:</strong> {{ team_details.team_id }}</p>
+        <p><strong>Team Name:</strong> {{ team_details.team_name }}</p>
+        <p><strong>Date of Creation:</strong> {{ team_details.creation_date }}</p>
+        <p><strong>Status:</strong> {{ team_details.status }}</p>
+        <p><strong>Liaison:</strong> {{ team_details.liaison_id }}</p>
+
+        <!-- Members -->
+        <h3>Members</h3>
+        <ul class="list-group">
+            {% for member in team_details.members %}
+            <li class="list-group-item">
+                <strong>{{ member.name }}</strong> ({{ member.student_number }})
+            </li>
+            {% endfor %}
+        </ul>
+        <h2>Pending Join Requests</h2>
+        {% if team_details.pending_requests %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Student Number</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in team_details.pending_requests %}
+                <tr>
+                    <td>{{ request.name }}</td>
+                    <td>{{ request.student_number }}</td>
+                    <td>
+                        <!-- Approve Form -->
+                        <form action="{{ url_for('team.approve_request', team_id=team_details.team_id) }}" method="POST"
+                            class="d-inline">
+                            <input type="hidden" name="student_number" value="{{ request.student_number }}">
+                            <button type="submit" class="btn btn-success">Approve</button>
+                        </form>
+
+                        <!-- Reject Form -->
+                        <form action="{{ url_for('team.reject_request', team_id=team_details.team_id) }}" method="POST"
+                            class="d-inline">
+                            <input type="hidden" name="student_number" value="{{ request.student_number }}">
+                            <button type="submit" class="btn btn-danger">Reject</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No pending requests.</p>
+        {% endif %}
+
+
+
+        <div class="mb-3">
+            <h5>Instructor-Set Parameters</h5>
+            <ul class="list-group">
+                <li class="list-group-item"><strong>Minimum Members:</strong> {{ team_parameters.min_members }}</li>
+                <li class="list-group-item"><strong>Maximum Members:</strong> {{ team_parameters.max_members }}</li>
+                <li class="list-group-item"><strong>Deadline:</strong> {{ team_parameters.formation_deadline }}</li>
+            </ul>
+        </div>
+
+        <!-- Liaison-only Actions -->
+        {% if is_liaison %}
+        <h4 class="mt-4">Liaison Actions</h4>
+        <form action="{{ url_for('team.transfer_liaison') }}" method="POST" class="mb-3">
+            <div class="mb-3">
+                <label for="new_liaison_id" class="form-label">Transfer Liaison Ownership</label>
+                <select name="new_liaison_id" id="new_liaison_id" class="form-control" required>
+                    {% for member in team_details.members %}
+                    {% if member.student_number != team_details.liaison_id %}
+                    <option value="{{ member.student_number }}">{{ member.name }} ({{ member.student_number }})</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Transfer Liaison</button>
+        </form>
+        {% endif %}
+
+        <!-- Quit Team -->
+        <form action="{{ url_for('team.quit_team') }}" method="POST">
+            <button type="submit" class="btn btn-danger">Quit Team</button>
+        </form>
+
+        <a href="{{ url_for('auth.dashboard_page') }}" class="btn btn-secondary mt-3">Back to Dashboard</a>
+    </div>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

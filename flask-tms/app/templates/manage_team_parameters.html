@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Team Parameters</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1>Manage Team Parameters</h1>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div>
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Display Current Settings -->
+        <div class="mb-4">
+            {% if current_settings %}
+            <h5>Current Parameters:</h5>
+            <ul class="list-group">
+                <li class="list-group-item"><strong>Course Code:</strong> {{ current_settings.course_code }}</li>
+                <li class="list-group-item"><strong>Minimum Members:</strong> {{ current_settings.min_members }}</li>
+                <li class="list-group-item"><strong>Maximum Members:</strong> {{ current_settings.max_members }}</li>
+                <li class="list-group-item"><strong>Deadline:</strong> {{ current_settings.formation_deadline }}</li>
+            </ul>
+            {% else %}
+            <div class="alert alert-warning" role="alert">
+                Team parameters have not been set yet.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Form to Update Parameters -->
+        <form action="{{ url_for('team_parameters.save_team_parameters') }}" method="POST">
+            <div class="mb-3">
+                <label for="course_code" class="form-label">Course Code</label>
+                <input type="text" class="form-control" id="course_code" name="course_code"
+                    placeholder="Enter course code" required>
+            </div>
+            <div class="mb-3">
+                <label for="min_members" class="form-label">Minimum Members</label>
+                <input type="number" class="form-control" id="min_members" name="min_members"
+                    placeholder="Enter minimum members" required>
+            </div>
+            <div class="mb-3">
+                <label for="max_members" class="form-label">Maximum Members</label>
+                <input type="number" class="form-control" id="max_members" name="max_members"
+                    placeholder="Enter maximum members" required>
+            </div>
+            <div class="mb-3">
+                <label for="deadline" class="form-label">Deadline</label>
+                <input type="date" class="form-control" id="deadline" name="deadline" required>
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">Save Parameters</button>
+            </div>
+        </form>
+        <a href="{{ url_for('auth.dashboard_page') }}" class="btn btn-secondary mt-3">Go Back to Dashboard</a>
+    </div>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
