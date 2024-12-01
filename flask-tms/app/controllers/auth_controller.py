@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, request, render_template, redirect, url_for, flash, session
 from app.models.user_model import UserModel
 import requests
 import os
@@ -74,7 +74,7 @@ def login():
 
     try:
         # Firebase REST API endpoint
-        api_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.getenv("AUTH_KEY")}"
+        api_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.getenv('AUTH_KEY')}"
 
         # Generate pseudo-email from student number
         email = f"{student_number}@example.com"
